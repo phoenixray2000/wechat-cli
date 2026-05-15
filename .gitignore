@@ -30,15 +30,21 @@ Thumbs.db
 
 # Project-specific
 .claude/
+.codex/
+docs/superpowers/plans/
 *.db
 *.db-wal
 *.db-shm
 
 # Sensitive data — NEVER commit
 *.json
+*.jsonl
+*.log
 !pyproject.toml
 !npm/**/package.json
 
 # Temp files
+.uv-cache/
+.runtime-tmp/
 *.tmp
 *.bak

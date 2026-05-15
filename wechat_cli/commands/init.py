@@ -1,18 +1,19 @@
 """init 命令 — 交互式初始化，提取密钥并生成配置"""
 
-import json
 import os
 import sys
 
 import click
 
 from ..core.config import STATE_DIR, CONFIG_FILE, KEYS_FILE, auto_detect_db_dir
+from ..core.security import ensure_private_dir, write_private_json
 
 
 @click.command()
 @click.option("--db-dir", default=None, help="微信数据目录路径（默认自动检测）")
 @click.option("--force", is_flag=True, help="强制重新提取密钥")
-def init(db_dir, force):
+@click.option("--show-key", is_flag=True, help="在终端显示完整密钥（默认脱敏）")
+def init(db_dir, force, show_key):
     """初始化 wechat-cli：提取密钥并生成配置"""
     click.echo("WeChat CLI 初始化")
     click.echo("=" * 40)
@@ -24,7 +25,7 @@ def init(db_dir, force):
         return
 
     # 2. 创建状态目录
-    os.makedirs(STATE_DIR, exist_ok=True)
+    ensure_private_dir(STATE_DIR)
 
     # 3. 确定 db_dir
     if db_dir is None:
@@ -46,7 +47,7 @@ def init(db_dir, force):
     click.echo("\n开始提取密钥...")
     try:
         from ..keys import extract_keys
-        key_map = extract_keys(db_dir, KEYS_FILE)
+        key_map = extract_keys(db_dir, KEYS_FILE, show_key=show_key)
     except RuntimeError as e:
         click.echo(f"\n[!] 密钥提取失败: {e}", err=True)
         if "sudo" not in str(e).lower():
@@ -60,8 +61,7 @@ def init(db_dir, force):
     cfg = {
         "db_dir": db_dir,
     }
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2, ensure_ascii=False)
+    write_private_json(CONFIG_FILE, cfg, indent=2, ensure_ascii=False)
 
     click.echo(f"\n[+] 初始化完成!")
     click.echo(f"    配置: {CONFIG_FILE}")

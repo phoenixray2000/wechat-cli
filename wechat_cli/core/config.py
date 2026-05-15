@@ -6,6 +6,8 @@ import os
 import platform
 import sys
 
+from .security import ensure_private_dir
+
 _SYSTEM = platform.system().lower()
 
 if _SYSTEM == "linux":
@@ -147,6 +149,8 @@ def auto_detect_db_dir():
 
 def load_config(config_path=None):
     """加载配置。默认从 ~/.wechat-cli/config.json 读取。"""
+    ensure_private_dir(STATE_DIR)
+
     if config_path is None:
         config_path = CONFIG_FILE
 
@@ -175,10 +179,11 @@ def load_config(config_path=None):
     cfg.setdefault("keys_file", os.path.join(state_dir, "all_keys.json"))
     cfg.setdefault("decrypted_dir", os.path.join(state_dir, "decrypted"))
     cfg.setdefault("decoded_image_dir", os.path.join(state_dir, "decoded_images"))
+    cfg.setdefault("cache_dir", os.path.join(state_dir, "cache"))
     cfg.setdefault("wechat_process", _DEFAULT_PROCESS)
 
     # 所有路径确保为绝对路径
-    for key in ("db_dir", "keys_file", "decrypted_dir", "decoded_image_dir"):
+    for key in ("db_dir", "keys_file", "decrypted_dir", "decoded_image_dir", "cache_dir"):
         if key in cfg and not os.path.isabs(cfg[key]):
             cfg[key] = os.path.join(state_dir, cfg[key])
 

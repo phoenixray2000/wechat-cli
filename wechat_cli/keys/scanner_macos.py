@@ -3,11 +3,20 @@
 import os
 import platform
 import plistlib
+import re
 import subprocess
 import sys
 import tempfile
 
-from .common import collect_db_files, cross_verify_keys, save_results, scan_memory_for_keys
+from ..core.security import mask_secret, write_private_json
+
+_HEX_KEY_RE = re.compile(r"\b[0-9a-fA-F]{64}\b")
+
+
+def _redact_keys(text, show_key):
+    if show_key:
+        return text
+    return _HEX_KEY_RE.sub(lambda m: mask_secret(m.group(0)), text)
 
 
 def _find_binary():
@@ -114,7 +123,7 @@ def _resign_wechat():
     return True, None
 
 
-def extract_keys(db_dir, output_path, pid=None):
+def extract_keys(db_dir, output_path, pid=None, show_key=False):
     """通过 C 二进制提取 macOS 微信数据库密钥。
 
     C 二进制需要在微信数据目录的父目录下运行，
@@ -159,9 +168,9 @@ def extract_keys(db_dir, output_path, pid=None):
 
     # 打印 C 二进制的输出
     if result.stdout:
-        print(result.stdout)
+        print(_redact_keys(result.stdout, show_key))
     if result.stderr:
-        print(result.stderr, file=sys.stderr)
+        print(_redact_keys(result.stderr, show_key), file=sys.stderr)
 
     # 检测 task_for_pid 失败 → 尝试 re-sign
     combined_output = (result.stdout or "") + (result.stderr or "")
@@ -205,8 +214,7 @@ def extract_keys(db_dir, output_path, pid=None):
     with open(c_output, encoding="utf-8") as f:
         keys_data = json.load(f)
 
-    with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(keys_data, f, indent=2, ensure_ascii=False)
+    write_private_json(output_path, keys_data, indent=2, ensure_ascii=False)
 
     # 清理 C 二进制的临时输出
     if os.path.abspath(c_output) != os.path.abspath(output_path):

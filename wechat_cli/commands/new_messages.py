@@ -11,6 +11,7 @@ import click
 from ..core.config import STATE_DIR
 from ..core.contacts import get_contact_names
 from ..core.messages import decompress_content, format_msg_type
+from ..core.security import ensure_private_dir, write_private_json
 from ..output.formatter import output
 
 STATE_FILE = os.path.join(STATE_DIR, "last_check.json")
@@ -27,9 +28,8 @@ def _load_last_state():
 
 
 def _save_last_state(state):
-    os.makedirs(STATE_DIR, exist_ok=True)
-    with open(STATE_FILE, 'w', encoding="utf-8") as f:
-        json.dump(state, f)
+    ensure_private_dir(STATE_DIR)
+    write_private_json(STATE_FILE, state)
 
 
 @click.command("new-messages")

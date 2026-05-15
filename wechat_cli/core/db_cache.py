@@ -3,32 +3,31 @@
 import hashlib
 import json
 import os
-import tempfile
 
 from .crypto import full_decrypt, decrypt_wal
 from .key_utils import get_key_info
+from .security import ensure_private_dir, ensure_private_file, write_private_json
 
 
 class DBCache:
-    CACHE_DIR = os.path.join(tempfile.gettempdir(), "wechat_cli_cache")
-    MTIME_FILE = os.path.join(tempfile.gettempdir(), "wechat_cli_cache", "_mtimes.json")
-
-    def __init__(self, all_keys, db_dir):
+    def __init__(self, all_keys, db_dir, cache_dir):
         self._all_keys = all_keys
         self._db_dir = db_dir
+        self._cache_dir = cache_dir
+        self._mtime_file = os.path.join(cache_dir, "_mtimes.json")
         self._cache = {}  # rel_key -> (db_mtime, wal_mtime, tmp_path)
-        os.makedirs(self.CACHE_DIR, exist_ok=True)
+        ensure_private_dir(self._cache_dir)
         self._load_persistent_cache()
 
     def _cache_path(self, rel_key):
         h = hashlib.md5(rel_key.encode()).hexdigest()[:12]
-        return os.path.join(self.CACHE_DIR, f"{h}.db")
+        return os.path.join(self._cache_dir, f"{h}.db")
 
     def _load_persistent_cache(self):
-        if not os.path.exists(self.MTIME_FILE):
+        if not os.path.exists(self._mtime_file):
             return
         try:
-            with open(self.MTIME_FILE, encoding="utf-8") as f:
+            with open(self._mtime_file, encoding="utf-8") as f:
                 saved = json.load(f)
         except (json.JSONDecodeError, OSError):
             return
@@ -52,8 +51,7 @@ class DBCache:
         for rel_key, (db_mt, wal_mt, path) in self._cache.items():
             data[rel_key] = {"db_mt": db_mt, "wal_mt": wal_mt, "path": path}
         try:
-            with open(self.MTIME_FILE, 'w', encoding="utf-8") as f:
-                json.dump(data, f)
+            write_private_json(self._mtime_file, data)
         except OSError:
             pass
 
@@ -83,6 +81,7 @@ class DBCache:
         full_decrypt(db_path, tmp_path, enc_key)
         if os.path.exists(wal_path):
             decrypt_wal(wal_path, tmp_path, enc_key)
+        ensure_private_file(tmp_path)
         self._cache[rel_key] = (db_mtime, wal_mtime, tmp_path)
         self._save_persistent_cache()
         return tmp_path

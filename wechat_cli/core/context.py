@@ -8,6 +8,7 @@ from .config import load_config, STATE_DIR
 from .db_cache import DBCache
 from .key_utils import strip_key_metadata
 from .messages import find_msg_db_keys
+from .security import ensure_private_dir
 
 
 class AppContext:
@@ -18,6 +19,7 @@ class AppContext:
         self.db_dir = self.cfg["db_dir"]
         self.decrypted_dir = self.cfg["decrypted_dir"]
         self.keys_file = self.cfg["keys_file"]
+        self.cache_dir = self.cfg["cache_dir"]
 
         if not os.path.exists(self.keys_file):
             raise FileNotFoundError(
@@ -28,13 +30,13 @@ class AppContext:
         with open(self.keys_file, encoding="utf-8") as f:
             self.all_keys = strip_key_metadata(json.load(f))
 
-        self.cache = DBCache(self.all_keys, self.db_dir)
+        self.cache = DBCache(self.all_keys, self.db_dir, self.cache_dir)
         atexit.register(self.cache.cleanup)
 
         self.msg_db_keys = find_msg_db_keys(self.all_keys)
 
         # 确保状态目录存在
-        os.makedirs(STATE_DIR, exist_ok=True)
+        ensure_private_dir(STATE_DIR)
 
     def display_name_fn(self, username, names):
         from .contacts import display_name_for_username

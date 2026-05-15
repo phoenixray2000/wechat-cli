@@ -6,10 +6,11 @@
 
 import hashlib
 import hmac as hmac_mod
-import json
 import os
 import re
 import struct
+
+from ..core.security import mask_secret, write_private_json
 
 PAGE_SZ = 4096
 KEY_SZ = 32
@@ -54,8 +55,12 @@ def collect_db_files(db_dir):
     return db_files, salt_to_dbs
 
 
+def _format_key_for_log(enc_key_hex, show_key):
+    return enc_key_hex if show_key else mask_secret(enc_key_hex)
+
+
 def scan_memory_for_keys(data, hex_re, db_files, salt_to_dbs, key_map,
-                         remaining_salts, base_addr, pid, print_fn):
+                         remaining_salts, base_addr, pid, print_fn, show_key=False):
     """扫描一段内存数据，匹配 hex 模式并验证密钥。
 
     返回本次扫描匹配到的 hex 模式数量。
@@ -78,7 +83,7 @@ def scan_memory_for_keys(data, hex_re, db_files, salt_to_dbs, key_map,
                         remaining_salts.discard(salt_hex)
                         dbs = salt_to_dbs[salt_hex]
                         print_fn(f"\n  [FOUND] salt={salt_hex}")
-                        print_fn(f"    enc_key={enc_key_hex}")
+                        print_fn(f"    enc_key={_format_key_for_log(enc_key_hex, show_key)}")
                         print_fn(f"    PID={pid} 地址: 0x{addr:016X}")
                         print_fn(f"    数据库: {', '.join(dbs)}")
                         break
@@ -94,7 +99,7 @@ def scan_memory_for_keys(data, hex_re, db_files, salt_to_dbs, key_map,
                     remaining_salts.discard(salt_hex_db)
                     dbs = salt_to_dbs[salt_hex_db]
                     print_fn(f"\n  [FOUND] salt={salt_hex_db}")
-                    print_fn(f"    enc_key={enc_key_hex}")
+                    print_fn(f"    enc_key={_format_key_for_log(enc_key_hex, show_key)}")
                     print_fn(f"    PID={pid} 地址: 0x{addr:016X}")
                     print_fn(f"    数据库: {', '.join(dbs)}")
                     break
@@ -110,7 +115,7 @@ def scan_memory_for_keys(data, hex_re, db_files, salt_to_dbs, key_map,
                         remaining_salts.discard(salt_hex)
                         dbs = salt_to_dbs[salt_hex]
                         print_fn(f"\n  [FOUND] salt={salt_hex} (long hex {hex_len})")
-                        print_fn(f"    enc_key={enc_key_hex}")
+                        print_fn(f"    enc_key={_format_key_for_log(enc_key_hex, show_key)}")
                         print_fn(f"    PID={pid} 地址: 0x{addr:016X}")
                         print_fn(f"    数据库: {', '.join(dbs)}")
                         break
@@ -171,8 +176,7 @@ def save_results(db_files, salt_to_dbs, key_map, output_path, print_fn):
         print_fn(f"\n[!] 未提取到任何密钥")
         raise RuntimeError("未能从任何微信进程中提取到密钥")
 
-    with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
+    write_private_json(output_path, result, indent=2, ensure_ascii=False)
     print_fn(f"\n密钥保存到: {output_path}")
 
     missing = [rel for rel, path, sz, salt_hex, page1 in db_files if salt_hex not in key_map]

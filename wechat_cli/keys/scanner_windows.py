@@ -3,7 +3,6 @@
 import ctypes
 import ctypes.wintypes as wt
 import functools
-import os
 import re
 import subprocess
 import time
@@ -71,7 +70,7 @@ def _enum_regions(h):
     return regs
 
 
-def extract_keys(db_dir, output_path, pid=None):
+def extract_keys(db_dir, output_path, pid=None, show_key=False):
     """提取 Windows 微信数据库密钥。
 
     Args:
@@ -122,6 +121,7 @@ def extract_keys(db_dir, output_path, pid=None):
                 all_hex_matches += scan_memory_for_keys(
                     data, hex_re, db_files, salt_to_dbs,
                     key_map, remaining_salts, base, pid_val, print,
+                    show_key=show_key,
                 )
 
                 if (reg_idx + 1) % 200 == 0:

@@ -19,7 +19,7 @@
 ## ✨ 功能亮点
 
 - **🚀 开箱即用** — `npm install -g` 一键安装，无需 Python
-- **📦 11 个命令** — sessions、history、search、contacts、members、stats、export、favorites、unread、new-messages、init
+- **📦 12 个命令** — sessions、history、search、contacts、members、stats、export、favorites、unread、new-messages、cleanup、init
 - **🤖 AI 优先** — 默认 JSON 输出，专为 LLM Agent 工具调用设计
 - **🔒 全程本地** — SQLCipher 即时解密，数据不出本机
 - **📊 丰富统计** — 发言排行、消息类型分布、24 小时活跃图
@@ -91,7 +91,7 @@ sudo wechat-cli init
 wechat-cli init
 ```
 
-这一步会自动检测微信数据目录、提取加密密钥，并保存到 `~/.wechat-cli/`。
+这一步会自动检测微信数据目录、提取加密密钥，并保存到 `~/.wechat-cli/`。终端输出默认会脱敏完整密钥；只有明确需要检查密钥时才使用 `--show-key`。
 
 ![init-claude-code-1](image/init-claude-code-1.png)
 
@@ -159,6 +159,8 @@ wechat-cli search "截止日期" --chat "项目组" # 搜索消息
 ## 🤖 AI 工具集成
 
 WeChat CLI 专为 AI Agent 设计，所有命令默认输出结构化 JSON。
+
+隐私提示：`sessions`、`history`、`search`、`unread`、`export` 等命令会输出私人微信内容。虽然 WeChat CLI 本身不会上传数据，但当 AI Agent 执行这些命令时，输出内容可能进入 Agent/模型上下文。
 
 ### Claude Code
 
@@ -301,6 +303,14 @@ wechat-cli new-messages                    # 后续: 仅返回上次以来的新
 
 状态保存在 `~/.wechat-cli/last_check.json`，删除此文件可重置。
 
+### `cleanup` — 清理本地缓存
+
+```bash
+wechat-cli cleanup                         # 清理解密数据库缓存
+wechat-cli cleanup --all                   # 同时清理临时状态
+wechat-cli cleanup --include-keys          # 同时删除配置和密钥；之后需要重新 init
+```
+
 ---
 
 ## 🔍 消息类型过滤
@@ -347,8 +357,10 @@ wechat-cli new-messages                    # 后续: 仅返回上次以来的新
 微信将聊天数据存储在本地的 SQLCipher 加密 SQLite 数据库中。WeChat CLI：
 
 1. **提取密钥** — 扫描微信进程内存获取加密密钥（`init`）
-2. **即时解密** — 透明页级 AES-256-CBC 解密，带缓存
+2. **即时解密** — 透明页级 AES-256-CBC 解密，缓存位于 `~/.wechat-cli/cache`
 3. **本地查询** — 所有数据留在本机，无需网络访问
+
+可用 `wechat-cli cleanup` 清理解密缓存。卸载前或把机器交给他人前，可执行 `wechat-cli cleanup --include-keys` 删除本地配置和密钥。
 
 ---
 

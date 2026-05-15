@@ -19,7 +19,7 @@ Chat history · Contacts · Sessions · Favorites · Statistics · Export
 ## ✨ Highlights
 
 - **🚀 Zero-config install** — `npm install -g` and you're done, no Python needed
-- **📦 11 commands** — sessions, history, search, contacts, members, stats, export, favorites, unread, new-messages, init
+- **📦 12 commands** — sessions, history, search, contacts, members, stats, export, favorites, unread, new-messages, cleanup, init
 - **🤖 AI-first** — JSON output by default, designed for LLM agent tool calls
 - **🔒 Fully local** — on-the-fly SQLCipher decryption, data never leaves your machine
 - **📊 Rich analytics** — top senders, message type breakdown, 24-hour activity charts
@@ -93,7 +93,7 @@ sudo wechat-cli init
 wechat-cli init
 ```
 
-This auto-detects your WeChat data directory, extracts encryption keys, and saves config to `~/.wechat-cli/`.
+This auto-detects your WeChat data directory, extracts encryption keys, and saves config to `~/.wechat-cli/`. Full keys are redacted in terminal output by default; use `--show-key` only if you explicitly need to inspect them.
 
 ![init-claude-code-1](image/init-claude-code-1.png)
 
@@ -161,6 +161,8 @@ wechat-cli search "deadline" --chat "Team" # Search messages
 ## 🤖 Using with AI Agents
 
 WeChat CLI is designed as an AI agent tool. All commands output structured JSON by default.
+
+Privacy note: commands such as `sessions`, `history`, `search`, `unread`, and `export` can print private WeChat content. When an AI agent runs these commands, that output may enter the agent/model context even though WeChat CLI itself does not upload data.
 
 ### Claude Code
 
@@ -303,6 +305,14 @@ wechat-cli new-messages                    # Subsequent: only new since last cal
 
 State saved at `~/.wechat-cli/last_check.json`. Delete to reset.
 
+### `cleanup` — Remove Local Caches
+
+```bash
+wechat-cli cleanup                         # Remove decrypted DB caches
+wechat-cli cleanup --all                   # Also remove transient state
+wechat-cli cleanup --include-keys          # Also remove config and keys; init again after this
+```
+
 ---
 
 ## 🔍 Message Type Filter
@@ -349,8 +359,10 @@ The `--type` option (on `history` and `search`):
 WeChat stores chat data in SQLCipher-encrypted SQLite databases locally. WeChat CLI:
 
 1. **Extracts keys** — scans WeChat process memory for encryption keys (`init`)
-2. **Decrypts on-the-fly** — transparent page-level AES-256-CBC decryption with caching
+2. **Decrypts on-the-fly** — transparent page-level AES-256-CBC decryption with a local cache at `~/.wechat-cli/cache`
 3. **Queries locally** — all data stays on your machine, no network access
+
+Use `wechat-cli cleanup` to remove decrypted caches. Use `wechat-cli cleanup --include-keys` before uninstalling or before handing the machine to someone else.
 
 ---
 
